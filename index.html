@@ -177,6 +177,25 @@ table.board tr.crossed td.bvar,table.board tr.crossed td.bval{text-decoration:li
 table.board td.bheap{vertical-align:top;padding:8px 10px;min-width:150px}
 table.board td.bheap .hbox{margin-bottom:8px}
 .hbox{display:flex;flex-direction:column;border:1.5px solid var(--ink);border-radius:6px;padding:4px 10px;background:var(--paper)}
+.hero{border:2px solid var(--ink)}
+.herogrid{display:grid;grid-template-columns:auto minmax(0,1fr);gap:22px;align-items:center}
+@media(max-width:560px){.herogrid{grid-template-columns:1fr;gap:10px}}
+.count{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:120px;padding:10px 14px;border-radius:10px;background:var(--pencil-soft);border:1px solid var(--pencil)}
+.count .n{font:900 64px/0.95 var(--display);font-stretch:75%;font-variant-numeric:tabular-nums}
+.count .u{font:600 12px/1.2 var(--body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px}
+.stat{display:flex;flex-direction:column;gap:4px;background:var(--sheet);border:1px solid var(--line);border-radius:10px;padding:14px 16px;color:var(--ink);text-decoration:none;min-width:0}
+a.stat:hover{border-color:var(--accent)}
+.stat .k{font:600 11px/1 var(--body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.stat .v{font:800 28px/1.1 var(--display);font-stretch:85%}
+.stat .s{font-size:12.5px;color:var(--muted)}
+h3.sect{font:600 12px/1.2 var(--body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:6px 0 -6px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,200px),1fr));gap:12px}
+.tile{background:var(--sheet);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.tile.weak{border-color:var(--fail)}
+.tile .tw{font:700 12px/1.3 var(--mono);color:var(--accent)}
+.tile .tt{font:700 15px/1.3 var(--display);font-stretch:95%}
+.tile .btn{padding:7px 10px;font-size:12.5px}
 details summary{cursor:pointer;font-weight:600}
 @media (prefers-reduced-motion:no-preference){.fade{animation:fade .25s ease-out}@keyframes fade{from{opacity:.4;transform:translateY(3px)}to{opacity:1;transform:none}}}
 </style>
@@ -2019,7 +2038,7 @@ const UNITS=[
 {wk:6,title:'While loops & top-down design',topics:['while','nestedwhile','design'],work:'Quiz 5 While loops · Lab 5 Rock-Paper-Scissors',sheet:'Practice 5'},
 {wk:7,title:'TDD, strings & for loops',topics:['tdd','strings','forrange'],work:'Quiz 6 TDD · Lab 6 string functions',sheet:'Practice 6 · Practice Midterm'},
 {wk:9,title:'Strings, range, for loops & Unicode',topics:['strings','forrange','ascii','patterns'],work:'Quiz 7 Strings, Range, For-loops (done Oct 23) · Lab 7 Encryption',sheet:'Practice 7',quiz:'q7'}];
-UNITS.push({wk:10,title:'Lists',topics:['lists'],work:'Lab 7 Implementation (due Mon Nov 2) · no quiz Fri Oct 30',sheet:'171-14 Lists slides · Python for Everybody ch. 8'});
+UNITS.push({wk:10,title:'Lists',topics:['lists'],work:'Quiz 8 Lists & side effects (Fri Nov 6) · Lab 7 due Mon Nov 2',sheet:'171-14 Lists slides · Python for Everybody ch. 8'});
 const UPCOMING=[];
 const WEEK9=[
 {d:'2026-10-19',day:'Mon Oct 19',hrs:'~45 min',tasks:[[20,'Learn: for loops & range (Practice 7 tables)','learn:forrange'],[15,'Practice 7 Q3–Q4 on paper, then check against the lesson',''],[10,'Quiz: Week 9 (aim for 5 questions)','quiz:unit9']]},
@@ -2386,46 +2405,62 @@ function drawFx(m,d,run){
 }
 
 /* ---------- HOME ---------- */
+const EVENTS=[
+{d:'2026-11-06',time:'Fri Nov 6, 9:00 am',title:'Quiz 8: Lists & side effects',unit:10,
+ note:'Barr\'s Canvas note: "See Practice 8 to prepare for this quiz. The quiz will cover lists and side-effects." The Week 11 module links <b>Practice 9 (Lists)</b> and <b>Lab 8 Implementation (List Functions)</b>; say <b>"add this week"</b> to pull them into the Gym.',
+ acts:[['quiz:unit10','Quiz prep: lists','primary'],['learn:lists','Lists lesson',''],['fx:l_addtwo','Board traces (heap)',''],['tdd:lcopy','List TDD drills',''],['trace:lside','Side-effect trace','']]},
+{d:'2026-12-10',time:'Thu Dec 10, 10:30 am – 1:00 pm',title:'Final exam (30% of your grade)',unit:null,
+ note:'Cumulative, covering everything through lists. Take the Mock Final in three sittings, then drill your red topics.',
+ acts:[['final','Mock Final','primary'],['quiz','Quiz: everything',''],['learn:gotchas','Gotchas','']]}];
+function daysTo(ds){const t=etToday();return Math.round((Date.UTC(+ds.slice(0,4),+ds.slice(5,7)-1,+ds.slice(8,10))-Date.UTC(+t.slice(0,4),+t.slice(5,7)-1,+t.slice(8,10)))/864e5);}
 R.home=function(){
   const st=Object.fromEntries(topicStats().map(x=>[x.k,x]));
-  const weak=topicStats().filter(x=>x.weak);
+  const all=topicStats(); const weak=all.filter(x=>x.weak);
+  const tot=all.reduce((a,x)=>a+x.tot,0), right=all.reduce((a,x)=>a+x.r,0);
   const done=Object.values(S.plan).filter(Boolean).length, total=PLAN.reduce((a,d)=>a+d.tasks.length+(d.extra||[]).length,0);
   const exS=k=>{const e=S.exams[k];if(!e||!e.graded)return null;let t=0;EX[k].parts.forEach((p,pi)=>{const v=parseFloat(e.score[k+'-'+pi]);if(!isNaN(v))t+=Math.min(v,p.pts);});return t;};
+  const up=EVENTS.filter(e=>daysTo(e.d)>=0); const next=up[0]; const fin=EVENTS.find(e=>e.title.startsWith('Final'));
+  const dl=n=>n===0?'today':n===1?'tomorrow':n+' days';
+  const cur=UNITS[UNITS.length-1];
   const unitCard=u=>{const tr=TR.filter(t=>!t.worked&&u.topics.includes(TRT[t.id]));const tx=TX.filter(x=>u.topics.includes(TXT[x.id]));
     return `<section class="sheet day"><div class="date">Week ${u.wk}<span>${esc(u.work)}</span></div><div class="stack" style="gap:8px">
      <h3>${esc(u.title)}</h3>
      <div class="row">${u.topics.map(k=>{const x=st[k];return `<a href="#" class="pill ${x.weak?'off':''}" data-go="learn:${k}" style="text-decoration:none">${TNAME[k]}${x.tot?' · '+x.pct+'%':''}</a>`}).join('')}</div>
-     <p class="small muted" style="margin:0">Practice sheet: ${esc(u.sheet)} (Canvas → Week ${u.wk})${tr.length?` · Traces: ${tr.map(t=>`<a href="#" data-go="trace:${t.id}">${esc(t.title)}</a>`).join(', ')}`:''}${tx.length?` · TDD: ${tx.map(x=>`<a href="#" data-go="tdd:${x.id}" class="mono">${x.name}</a>`).join(', ')}`:''}</p>
-     <div class="row"><button class="btn primary" data-go="quiz:unit${u.wk}">Quiz prep: Week ${u.wk}</button>${u.quiz?`<button class="btn" data-go="${u.quiz}">Timed practice quiz</button>`:''}<button class="btn ghost" data-go="learn:${u.topics[0]}">Read the lessons →</button>${u.wk>=7?'<button class="btn ghost" data-go="fx">Function Explorer →</button>':''}</div></div></section>`;};
+     <p class="small muted" style="margin:0">Practice sheet: ${esc(u.sheet)}${tr.length?` · Traces: ${tr.map(t=>`<a href="#" data-go="trace:${t.id}">${esc(t.title)}</a>`).join(', ')}`:''}${tx.length?` · TDD: ${tx.map(x=>`<a href="#" data-go="tdd:${x.id}" class="mono">${x.name}</a>`).join(', ')}`:''}</p>
+     <div class="row"><button class="btn primary" data-go="quiz:unit${u.wk}">Quiz prep: Week ${u.wk}</button>${u.quiz?`<button class="btn" data-go="${u.quiz}">Timed practice quiz</button>`:''}<button class="btn ghost" data-go="learn:${u.topics[0]}">Lessons →</button><button class="btn ghost" data-go="fx">Function Explorer →</button></div></div></section>`;};
+  const tile=u=>{const acc=u.topics.map(k=>st[k]).filter(x=>x.tot);const pct=acc.length?Math.round(100*acc.reduce((a,x)=>a+x.r,0)/acc.reduce((a,x)=>a+x.tot,0)):null;const isWeak=u.topics.some(k=>st[k].weak);
+    return `<div class="tile ${isWeak?'weak':''}"><div class="tw">Week ${u.wk}${pct!=null?` · <span class="${pct<70?'bad':'ok'}">${pct}%</span>`:''}</div><div class="tt">${esc(u.title)}</div><div class="small muted">${esc(u.work.split(' · ')[0])}</div><div class="row" style="margin-top:6px"><button class="btn" data-go="quiz:unit${u.wk}">Quiz prep</button><a href="#" class="small" data-go="learn:${u.topics[0]}">Lessons</a></div></div>`;};
   $('#main').innerHTML=`<div class="stack fade">
-  <section class="sheet"><h2>COMP 171 Gym</h2>
-    <p class="lede">Your study base for Barr's weekly quizzes and the final. Each week is a unit with its lessons, quiz questions, traces and TDD drills. Before a Friday quiz, open that week and press <b>Quiz prep</b>.</p>
-    <div class="key" style="margin-top:10px"><b>This week: Lists (Week 10).</b> No quiz today (Fri Oct 30); Lab 7 Implementation is due Mon Nov 2. Barr hasn't announced the next quiz yet; it will most likely be on lists and side effects. Read <a href="#" data-go="learn:lists">Lists</a>, watch the <a href="#" data-go="fx:l_alias">list examples in the Function Explorer</a>, do the list drills in the <a href="#" data-go="tdd:lcopy">TDD Lab</a>, then press <b>Quiz prep: Week 10</b> below. <b>Final: Thu Dec 10, 10:30 am</b>, 30% of your grade. A cumulative <a href="#" data-go="final">Mock Final</a> is in Exams. Quiz retakes: anything under 7/10 can be retaken up to 7 (Quiz 3 and Quiz 5 qualify).</div>
-    <div class="verdict bad" style="margin-top:10px"><strong class="bad">Quiz 7 lesson</strong>: on the last question you had the right idea and the wrong tool. To print or keep only some characters, use the loop + if + print shape, not <code>replace</code>:<pre class="code" style="margin:6px 0 4px">for i in range(len(s)):
-    if s[i] != ".":
-        print(s[i])</pre><span class="small">Practise it: <a href="#" data-go="quiz:unit9">Week 9 quiz prep</a> (it includes that question and two variants) · <a href="#" data-go="fx:remove_all">remove_all in the Function Explorer</a>. The same shape works on lists.</span></div>
-  </section>
-  <section class="sheet"><h3>Week 9 plan (Quiz 7, done)</h3><p class="small muted">Sized at about an hour a day. Ticks are saved in this browser.</p>
-    <div class="stack" style="margin-top:10px">${WEEK9.map(d=>`<div class="day ${d.d===etToday()?'today':''}" style="padding:6px;border-radius:8px"><div class="date">${d.day}<span>${d.hrs}${d.d===etToday()?' · <b>today</b>':''}</span></div><div>${d.tasks.map((t,i)=>taskRow('w9-'+d.d+'-'+i,t)).join('')}</div></div>`).join('')}</div>
-  </section>
-  ${UNITS.slice().reverse().map(unitCard).join('')}
-  <section class="sheet"><h3>Topic strength</h3>
-    <p class="small muted">From your Quiz answers. A topic turns red below 70% (with at least 2 answers), and the quiz serves red topics more often.</p>
-    ${topicStats().map(x=>`<div class="statrow ${x.weak?'weak':''}"><span class="lbl">${x.n}</span><div class="bar"><i style="width:${x.pct??0}%;${x.weak?'background:var(--fail)':''}"></i></div><span class="num">${x.tot?x.pct+'% · '+x.tot:'—'}</span></div>`).join('')}
-    ${weak.length?`<p style="margin-top:10px">Review next: ${weak.map(x=>`<a href="#" data-go="learn:${x.k}">${x.n}</a>`).join(', ')}</p>`:''}
-  </section>
-  <section class="sheet"><h3>Study with Gemini</h3>
+  ${next?`<section class="sheet hero"><div class="herogrid">
+     <div class="count"><span class="n">${daysTo(next.d)<=1?(daysTo(next.d)===0?'Today':'1'):daysTo(next.d)}</span><span class="u">${daysTo(next.d)>1?'days to go':daysTo(next.d)===1?'day to go':''}</span></div>
+     <div class="stack" style="gap:8px;min-width:0"><span class="pill" style="align-self:flex-start">Next up · ${esc(next.time)}</span><h2 style="margin:0">${esc(next.title)}</h2><p class="small" style="margin:0">${next.note}</p>
+       <div class="row">${next.acts.map(([g,l,c])=>`<button class="btn ${c}" data-go="${g}">${l}</button>`).join('')}</div></div></div></section>`:
+   `<section class="sheet hero"><h2>No quiz in the Gym yet</h2><p class="small">When Barr posts the next week, tell Claude <b>"add this week"</b>.</p></section>`}
+  <div class="statgrid">
+    ${fin&&next!==fin?`<a href="#" class="stat" data-go="final"><span class="k">Final</span><span class="v">${dl(daysTo(fin.d))}</span><span class="s">Thu Dec 10 · Mock Final in Exams</span></a>`:''}
+    <a href="#" class="stat" data-go="quiz"><span class="k">Quiz accuracy</span><span class="v">${tot?Math.round(100*right/tot)+'%':'—'}</span><span class="s">${tot?tot+' answers so far':'no answers yet: start a quiz'}</span></a>
+    <div class="stat"><span class="k">Review next</span><span class="v small" style="font-size:15px;line-height:1.4">${weak.length?weak.slice(0,4).map(x=>`<a href="#" data-go="learn:${x.k}">${x.n}</a>`).join(', '):'Nothing red yet'}</span><span class="s">${weak.length?'below 70% in the quiz':'answer more questions to find weak spots'}</span></div>
+  </div>
+  <h3 class="sect">Current unit: Quiz 8 material</h3>
+  ${unitCard(cur)}
+  <h3 class="sect">Earlier weeks</h3>
+  <div class="tiles">${UNITS.slice(0,-1).reverse().map(tile).join('')}</div>
+  <section class="sheet"><details><summary>Topic strength (all topics)</summary><div style="margin-top:10px">
+    ${all.map(x=>`<div class="statrow ${x.weak?'weak':''}"><span class="lbl">${x.n}</span><div class="bar"><i style="width:${x.pct??0}%;${x.weak?'background:var(--fail)':''}"></i></div><span class="num">${x.tot?x.pct+'% · '+x.tot:'—'}</span></div>`).join('')}</div></details></section>
+  <section class="sheet"><details><summary>Study with Gemini</summary><div style="margin-top:10px">
     <p class="small muted">Paste this into Gemini for extra practice. Replace the bracketed line with this week's topic first.</p>
     <textarea id="gem" rows="8" readonly>${esc(GEMINI)}</textarea>
-    <div class="row" style="margin-top:8px"><button class="btn" id="copygem">Copy prompt</button></div>
-  </section>
-  <section class="sheet"><details><summary>Midterm prep plan, Oct 10–16 (done · ${done}/${total} tasks ticked)</summary>
-    <div class="stack" style="margin-top:12px">${PLAN.map(d=>`<div class="day"><div class="date">${d.day}<span>${d.hrs} · ${d.theme}</span></div><div>${d.tasks.map((t,i)=>taskRow(d.d+'-'+i,t)).join('')}${d.extra?`<div class="extra">If you have 4 hrs</div>`+d.extra.map((t,i)=>taskRow(d.d+'-x'+i,t)).join(''):''}</div></div>`).join('')}</div>
-    <p class="small muted">Midterm scores: Practice ${exS('pm')??'not graded'}${exS('pm')!=null?'/50':''} · Mock ${exS('mock')??'not graded'}${exS('mock')!=null?'/50':''}</p></details></section>
+    <div class="row" style="margin-top:8px"><button class="btn" id="copygem">Copy prompt</button></div></div></details></section>
+  <section class="sheet"><details><summary>Past plans: midterm (Oct 10–16) and Quiz 7 (Oct 19–23)</summary>
+    <div class="stack" style="margin-top:12px"><h4>Midterm · ${done}/${total} ticked · Practice ${exS('pm')??'—'}${exS('pm')!=null?'/50':''} · Mock ${exS('mock')??'—'}${exS('mock')!=null?'/50':''}</h4>
+    ${PLAN.map(d=>`<div class="day"><div class="date">${d.day}<span>${d.hrs} · ${d.theme}</span></div><div>${d.tasks.map((t,i)=>taskRow(d.d+'-'+i,t)).join('')}${d.extra?`<div class="extra">If you have 4 hrs</div>`+d.extra.map((t,i)=>taskRow(d.d+'-x'+i,t)).join(''):''}</div></div>`).join('')}
+    <h4>Quiz 7</h4>${WEEK9.map(d=>`<div class="day"><div class="date">${d.day}<span>${d.hrs}</span></div><div>${d.tasks.map((t,i)=>taskRow('w9-'+d.d+'-'+i,t)).join('')}</div></div>`).join('')}
+    <p class="small muted">Quiz 7 lesson: to print or keep only some characters, use <code>for i in range(len(s)):</code> + <code>if</code> + <code>print</code>, not <code>replace</code>.</p></div></details></section>
   </div>`;
   $$('.task input').forEach(c=>c.addEventListener('change',()=>{S.plan[c.id]=c.checked;save();c.closest('.task').classList.toggle('done',c.checked);}));
   $('#copygem').onclick=()=>{const t=$('#gem');navigator.clipboard.writeText(GEMINI).then(()=>toast('Copied')).catch(()=>{t.focus();t.select();toast('Selected: press Ctrl/Cmd+C');});};
 };
+
 /* ---------- EXAMS ---------- */
 R.exams=function(){
   const cardq=(k,desc)=>{const e=S.exams[k];let t=null;if(e&&e.graded){t=0;EX[k].parts.forEach((p,pi)=>{const v=parseFloat(e.score[k+'-'+pi]);if(!isNaN(v))t+=Math.min(v,p.pts);});}
